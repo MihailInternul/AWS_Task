@@ -73,8 +73,29 @@ echo "Subnet $subnet_id associated with route table $route_table_id"
 aws ec2 create-key-pair --key-name my-key-pair --query 'KeyMaterial' --output text > my-key-pair.pem
 chmod 400 my-key-pair.pem
 
-# Launch EC2 Instance with User Data
-instance_id=$(aws ec2 run-instances --image-id ami-0f403e3180720dd7e --count 1 --instance-type t2.micro --key-name my-key-pair --subnet-id $subnet_id --security-group-ids $security_group_id --user-data "$user_data" --query 'Instances[0].InstanceId' --output text --region $region)
+# IAM Role Creation and Attachment Steps
+role_name="EC2ECRAccessRole"
+instance_profile_name="EC2ECRAccessProfile"
+
+# Create IAM Policy for ECR Access
+policy_arn=$(aws iam create-policy --policy-name ECRReadOnlyAccess --policy-document file://ecr-access-policy.json --query 'Policy.Arn' --output text)
+
+# Create IAM Role for EC2
+trust_policy='{"Version": "2012-10-17","Statement": [{"Effect": "Allow","Principal": {"Service": "ec2.amazonaws.com"},"Action": "sts:AssumeRole"}]}'
+aws iam create-role --role-name "$role_name" --assume-role-policy-document "$trust_policy"
+
+# Attach the policy to the role
+aws iam attach-role-policy --role-name "$role_name" --policy-arn $policy_arn
+
+# Create Instance Profile and add the role
+aws iam create-instance-profile --instance-profile-name "$instance_profile_name"
+aws iam add-role-to-instance-profile --instance-profile-name "$instance_profile_name" --role-name "$role_name"
+
+# Wait for the IAM role to be fully propagated
+sleep 20
+
+# Launch EC2 Instance with User Data and IAM Role
+instance_id=$(aws ec2 run-instances --image-id ami-0f403e3180720dd7e --count 1 --instance-type t2.micro --key-name my-key-pair --subnet-id $subnet_id --security-group-ids $security_group_id --iam-instance-profile Name="$instance_profile_name" --user-data "$user_data" --query 'Instances[0].InstanceId' --output text --region $region)
 echo "EC2 Instance launched with ID: $instance_id"
 
 # Wait for the instance to be in a running state
