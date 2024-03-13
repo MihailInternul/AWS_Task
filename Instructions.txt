@@ -1,0 +1,10 @@
+Complete the following practical task using the knowledge gained from the courses and the documentation provided in the Learning Path:
+
+Write one or several bash scripts (using AWS CLI) which:
+Create VPC, Subnet, Elastic Container Registry (ECR), EC2 instance, public IP address for EC2 instance, Security Groups
+Push a java spring-petlinic container image you built in “Docker” module to ECR
+ECR should be private
+Install Docker on the VM
+Run container on the VM
+Verify that application is accessible in your browser
+Remove resources
